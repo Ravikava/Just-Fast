@@ -86,3 +86,11 @@ async def update_user(
 #         token=token,
 #         authorize=authorize
 #     )
+
+@router.post('/suggest_usernames/')
+async def suggest_usernames(token:Request, authorize: AuthJWT=Depends(),user_name : str = ''):
+    return await UserController.suggest_usernames(token=token,user_name=user_name,authorize=authorize)
+
+@router.get('/search_user/')
+async def search_user(token:Request,authorize:AuthJWT=Depends(),query : str = ''):
+    return await UserController.search_user(token=token,search_term=query,authorize=authorize)

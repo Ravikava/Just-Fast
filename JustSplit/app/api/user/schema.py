@@ -5,6 +5,7 @@ from sqlalchemy import update
 from datetime import datetime
 from app.config.config import S3Config
 
+import random
 class UserSchema:
     
     @classmethod
@@ -17,13 +18,15 @@ class UserSchema:
         return data
     
     @classmethod
-    async def get_user(cls,email = None,user_id = None,phone_number = None):
+    async def get_user(cls,email = None,user_id = None,phone_number = None,user_name=None):
         if email:
             filter = User.email == email
         if user_id:
             filter = User.id == int(user_id)
         if phone_number:
             filter = User.phone_number == phone_number
+        if user_name:
+            filter = User.user_name == user_name
         data = select(
             User
         ).where(filter)
@@ -107,6 +110,55 @@ class UserSchema:
         except:
             await db.rollback()
         return True
+    
+    @classmethod
+    async def suggest_usernames(cls,user_id,user_name):
+        suggestions = []
+        user = await cls.get_user(user_id=user_id)
+                
+        if user.name != None or user.name != '':
+                if ' ' in user.name:
+                    name = user.name.split(' ')
+                else:
+                    name = None
+        email = user.email.split('@')
+        if name:
+            suggestions.append(f"{name[0].lower()}{name[1].lower()}")
+        suggestions.append(f"{email[0]}")
+        
+        if name:
+            if len(name) >= 2:
+                first_name, last_name = name[0], name[-1]
+                suggestions.append(f"{last_name[0].lower()}{first_name.lower()}")
+                suggestions.append(f"{first_name.lower()}{last_name[0].lower()}")
+            
+        for _ in range(4):
+            randon_number = random.randint(111,999)
+            numbered_username = f"{user_name}{randon_number}"
+            suggestions.append(numbered_username)
+        
+        for user_name in suggestions:
+            exists = await cls.get_user(user_name=user_name)
+            
+            if exists:
+                suggestions.remove(exists.user_name)
+        return suggestions
+    
+    @classmethod
+    async def search_user(cls,search_term):
+        filter_condition = (
+            (User.name.ilike(f'%{search_term}%')) |
+            (User.email.ilike(f'%{search_term}%')) |
+            (User.user_name.ilike(f'%{search_term}%')) |
+            (User.phone_number.ilike(f'{search_term}%'))
+        )
+        
+        data = select(User).where(filter_condition)
+        data = await db.execute(data)
+        user_data = data.scalars().all()
+        
+        return user_data
+        
     
 
 

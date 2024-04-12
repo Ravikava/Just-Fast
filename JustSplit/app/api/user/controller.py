@@ -307,6 +307,112 @@ class UserController:
             )
         return response
 
+    @classmethod
+    async def check_username(cls,user_name):
+        user = await UserSchema.get_user(user_name=user_name)
+        if user:
+            return False
+        else:
+            return True
+        
 
+    @classmethod
+    async def suggest_usernames(cls,token:Request,user_name,authorize):
+        await auth_check(Authorize=authorize,token=token)
+        user_id = authorize.get_jwt_subject()
+        try:
 
+            availability = await cls.check_username(user_name=user_name)
 
+            if availability:
+                serializer = SuccessResponseSerializer(
+                        code=status.HTTP_404_NOT_FOUND,
+                        message='Available',
+                    )
+                    
+                response = response_structure(
+                    serializer=serializer,
+                    status_code=status.HTTP_404_NOT_FOUND
+                )
+                
+            else:
+                
+                suggestions =  await UserSchema.suggest_usernames(user_id=user_id,user_name=user_name)
+
+                print(f"\n\n\n suggestions { suggestions } \n\n\n")
+
+                serializer = SuccessResponseSerializer(
+                        code=status.HTTP_200_OK,
+                        message='Not Available check suggested user_name list',
+                        data=suggestions
+                    )
+                    
+                response = response_structure(
+                    serializer=serializer,
+                    status_code=status.HTTP_200_OK
+                )
+                
+        except Exception as e:
+            serializer = ErrorResponseSerializer(
+                    code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    message=f'Error : --> {str(e)}',
+                    data=None
+                )
+                
+            response = response_structure(
+                serializer=serializer,
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        return response
+    
+    @classmethod
+    async def search_user(cls,token:Request,search_term,authorize):
+        await auth_check(Authorize=authorize,token=token)
+        try:
+            searched_users = await UserSchema.search_user(search_term=search_term)
+            if searched_users != []:
+                user_data = [
+                    {
+                        'id': user.id,
+                        'name':user.name,
+                        'user_name':user.user_name,
+                        'profile_image':user.profile_image,
+                    } for user in searched_users
+                ]
+                
+                serializer = SuccessResponseSerializer(
+                        code=status.HTTP_200_OK,
+                        message='Get Searched User Profile Data',
+                        data = user_data
+                    )
+                    
+                response = response_structure(
+                    serializer=serializer,
+                    status_code=status.HTTP_200_OK
+                )
+            else:
+                serializer = SuccessResponseSerializer(
+                        code=status.HTTP_404_NOT_FOUND,
+                        message='Searched User Not Found',
+                    )
+                    
+                response = response_structure(
+                    serializer=serializer,
+                    status_code=status.HTTP_404_NOT_FOUND
+                )
+        except Exception as e:
+            serializer = ErrorResponseSerializer(
+                    code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    message=f'Error : --> {str(e)}',
+                    data=None
+                )
+                
+            response = response_structure(
+                serializer=serializer,
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        return response
+            
+            
+            
+            
